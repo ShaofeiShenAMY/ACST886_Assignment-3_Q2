@@ -1,0 +1,443 @@
+---
+title: "Shaofei Shen_45503745_assignment 3_Q2"
+author: "Shaofei Shen"
+date: "2019/10/3"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Q2
+#### profit testing process
+##### create the meltiple decrement table
+Input the data from table
+```{r}
+x_2<-c()
+x_2<-c(30:39)
+qd<-c()
+qd[30:39]<-c(0.00043,.00042,.00041,.00040,.00041,.00042,.00043,.00045,.00049,.00053)
+qw<-c()
+qw[30:39]<-c(0.25,0.2,0.175,0.150,0.150,0.150,0.150,0.150,0.150,1)
+```
+ 
+The dependent rates is given by 
+$(aq)_x^d=q_x^d(1-0.5q_x^w)$,$(aq)_x^w=q_x^w(1-0.5q_x^d)$,$(ad)_x^d=(al)_x*(aq)_x^d$
+```{r}
+aqx.d<-c()
+aqx.d[30:39]<-qd[30:39]*(1-0.5*qw[30:39])
+aqx.w<-c()
+aqx.w[30:39]<-qw[30:39]*(1-0.5*qd[30:39])
+```
+
+initialise $(ad)_x^d$ and $(ad)_x^w$ and the formula is given by $(ad)_x^d=(al)_x*(aq)_x^d$,$(ad)_x^w=(al)_x*(aq)_x^w$, $(al)_{x+1}=(al)_x-(ad)_x^d-(ad)_x^w$
+create the melti-decrement table.
+```{r}
+al.x<-c()
+ad.x.d<-c()
+ad.x.w<-c()
+al.x[30]<-100000
+for (j in 30:40) {
+  ad.x.d[j]<-al.x[j]*aqx.d[j]
+  ad.x.w[j]<-al.x[j]*aqx.w[j]
+  al.x[j+1]<-al.x[j]-ad.x.d[j]-ad.x.w[j]
+}
+MDtable <- cbind(x_2[30:40],qd[30:40],qw[30:40],aqx.d[30:40],aqx.w[30:40],al.x[30:40],ad.x.d[30:40],ad.x.w[30:40])
+colnames(MDtable) <- c("x","qd", "qw","(aq)d","(aq)w","(al)","(ad)d", "(ad)w")
+MDtable
+```
+##### create the unit fund table 
+The vector of premium $P_t$ is
+```{r}
+prems<-c()
+prems[30:39]<-c(rep(5000,10))
+prems[30:39]
+```
+The Premium-based fee is $P_t*(1-a_t)=5000*45\%$ in year 1 and $5000*1\%$ thereafter.
+```{r}
+pbf<-c()
+pbf[30:39]<-c(prems[30]*0.45,prems[31:39]*0.01)
+pbf[30:39]
+```
+The Buy/Sell margin is $b*P_t *a_t=0.5\%*P_t*(1-45\%)$ in year 1, $0.5\%*P_t*(1-1\%)$ thereafter.
+```{r}
+bsm<-c()
+bsm[30:39]<-c(0.005*prems[30]*(1-0.45),0.005*prems[31:39]*(1-0.01))
+bsm[30:39]
+```
+The Invested premium $IP_t=P_t - Premiumbased\,fee - Buy/Sell\,margin$
+```{r}
+IP<-c()
+IP[30:39]<-prems[30:39]-pbf[30:39]-bsm[30:39]
+IP[30:39]
+```
+Value of unit at the end of the year
+$VU_0=IP_0(1+i)(1-m)\;for\;t=0$;$VU_t=(VU_{t-1}+IP_t)(1+i)(1-m)\;for\;t=1,2,3,...$ 
+with unit fund earning rate on the unit fund is $i=10\%$, the asset fee is $m=0.3\%$
+```{r}
+i<-0.1;m<-0.003
+VU<-c()
+for (j in 30:39) {
+  VU[30]<-IP[30]*(1+i)*(1-m)
+  VU[j]<-(VU[j-1]+IP[j])*(1+i)*(1-m)
+}
+VU[30:39]
+```
+we need to compute the expected cashflow for unit fund
+expected investment premium 
+$Expected\,Invested\,Premium(EIP_t)=IP_t\frac{(al)_{29+t}}{(al)_{30}}$
+```{r}
+EIP.u<-c()
+EIP.u[30:39]<-IP[30:39]*al.x[30:39]/al.x[30]
+EIP.u[30:39]
+```
+expected value of units 
+$Expected\,Value\,of\,Units(EVU_t)=VU_t\frac{(al)_{30+t}}{(al)_{30}}$
+```{r}
+EVU.u<-c()
+EVU.u[30:39]<-VU[30:39]*al.x[31:40]/al.x[30]
+EVU.u[30:39]
+```
+expected interest
+$i*(EVU_{t-1}+EIP_t)$
+```{r}
+int.u<-c()
+int.u[30:39]<-c(i*EIP.u[30],i*(EVU.u[30:38]+EIP.u[31:39]))
+int.u[30:39]
+```
+tranfer for non-unit fund is calculated by 
+$EIP_1+Interst_1-EVU_1$ in Year 1 and $EVU_{t-1}+EIP_t+Interst_t-EVU_t$ in following years.
+```{r}
+Tmsfr.u<-c()
+for (j in 30:39) {
+  Tmsfr.u[30]<-EIP.u[30]+int.u[30]-EVU.u[30]
+  Tmsfr.u[j]<-EVU.u[j-1]+EIP.u[j]+int.u[j]-EVU.u[j]
+}
+Tmsfr.u[30:39]
+```
+create the unit fund table 
+```{r}
+t<-c(1:10)
+UFtable <- cbind(t,IP[30:39],VU[30:39],EIP.u[30:39],int.u[30:39],EVU.u[30:39],Tmsfr.u[30:39])
+colnames(UFtable) <- c("year","invested premium","value of units", "expected invested premium","expected interest","expected value of units","transfer")
+UFtable
+```
+#### create the non-unit fund table 
+withour probility 
+calculate expense 
+```{r}
+exp<-c()
+exp[30:39]<-c(prems[30]*0.45+58,58*1.2^(t[2:10]-1))
+exp[30:39]
+```
+
+Death and Surrender Benefit are equal to the sell value of units.
+```{r}
+dsbft<-c()
+dsbft[30:39]<-VU[30:39]
+dsbft[30:39]
+```
+
+Expected cashflows 
+Expected premium-based fee for the Non-unit Fund
+$Expected\,premium\,based\,fees=premium\,based\,fees\,\frac{(al)_{29+t}}{(al)_{30}}$
+```{r}
+Epbf.nu<-c()
+Epbf.nu[30:39]<-pbf[30:39]*al.x[30:39]/al.x[30]
+Epbf.nu[30:39]
+```
+expected buy/sell margin 
+$Expected\,Buy\,Sell\,margins=Buy\,Sell\,margins\,\frac{(al)_{29+t}}{(al)_{30}}$
+```{r}
+Ebsm.nu<-c()
+Ebsm.nu[30:39]<-bsm[30:39]*al.x[30:39]/al.x[30]
+Ebsm.nu[30:39]
+```
+Expected expense 
+$Expected\,Expenses=Expenses\,\frac{(al)_{29+t}}{(al)_{30}}$
+```{r}
+Eexp.nu<-c()
+Eexp.nu[30:39]<-exp[30:39]*al.x[30:39]/al.x[30]
+Eexp.nu[30:39]
+```
+Expected death benefit for non-unit fund 
+$Expected\,Death\,Benefits=Death\,Benefits\,\frac{(ad)_{29+t}^d}{(al)_{30}}$
+```{r}
+Edbft.nu<-c()
+Edbft.nu[30:39]<-dsbft[30:39]*ad.x.d[30:39]/al.x[30]
+Edbft.nu[30:39]
+```
+
+Expected surrender benefit 
+$Expected\,Surrender\,Benefits=Surrender\,Benefits\,\frac{(ad)_{29+t}^w}{(al)_{30}}$
+```{r}
+Esbft.nu<-c()
+Esbft.nu[30:39]<-dsbft[30:39]*ad.x.w[30:39]/al.x[30]
+Esbft.nu[30:39]
+```
+
+The Non-unit fund earning rate is 8%.$Expected\,interest=i*(Expected\,premium\,based\,fees+Expected\,Buy\,Sell\,margins-Expected\,Expenses)$
+```{r}
+i.nu<-0.08
+int.nu<-c()
+int.nu[30:39]<-i.nu*(Epbf.nu[30:39]+Ebsm.nu[30:39]-Eexp.nu[30:39])
+int.nu[30:39]
+```
+
+#### (a)
+The transfers are calculated by 
+$Expected\,premium\,based\,fees+Expected\,Buy\,Sell\,margins-Expected\,Expenses+Expected\,Interest+Expected\,transfer\,from\,Unit\,Fund-Expected\,death\,benefits-Expected\,surrender\,benefits$
+It gives the profit signiture
+```{r}
+Tmsfr.nu<-c()
+Tmsfr.nu[30:39]<-Epbf.nu[30:39]+Ebsm.nu[30:39]-Eexp.nu[30:39]+int.nu[30:39]+Tmsfr.u[30:39]-Edbft.nu[30:39]-Esbft.nu[30:39]
+Tmsfr.nu[30:39]
+```
+create the non-unit fund table 
+without probability 
+```{r}
+nUFtable_1 <- cbind(t,pbf[30:39],bsm[30:39],exp[30:39],dsbft[30:39])
+colnames(nUFtable_1) <- c("year","premium based fee","buy sell margin", "expense","death/sur benefit")
+nUFtable_1
+```
+create the expected cashflow table 
+```{r}
+nUFtable_2 <- cbind(t,Epbf.nu[30:39],Ebsm.nu[30:39],Eexp.nu[30:39],int.nu[30:39],Tmsfr.u[30:39],Edbft.nu[30:39],Esbft.nu[30:39],Tmsfr.nu[30:39])
+colnames(nUFtable_2) <- c("year","expected premium based fee","expected buy sell margin", "expected expense","expected interest","Trnsfr ufund", "death bft", "surr bft", "transfer")
+nUFtable_2
+```
+The expected present value of non-unit fund transfer at 12.5% is 
+$EPV=\sum_{t=1}^{10}(1+12.5\%)^{-t}\,Transfer_t$
+```{r}
+EPV.Tmsfr.nu<-sum(1.125^(-t)*Tmsfr.nu[30:39])
+EPV.Tmsfr.nu
+```
+So the expected present value of transfer is  34.67393
+
+The profit measure is $\frac{PV\,of\,transfers\,at\,12.5\%}{First\,year\,premium}$
+```{r}
+prob<-EPV.Tmsfr.nu/prems[30]
+prob
+```
+
+#### (b)
+##### Method 1
+Using knitr package and purl, we can convert our R markdown in to R script. Delete all the outputs and put it into a function. Set the transfer in Year 10 as output and  Value of unit in Year 9 as input. since we need to change the policy value to zeroise and make the negative transfer(year 10) to zero.
+```{r}
+func<-function(s){
+x_2<-c()
+x_2<-c(30:39)
+qd<-c()
+qd[30:39]<-c(0.00043,.00042,.00041,.00040,.00041,.00042,.00043,.00045,.00049,.00053)
+qw<-c()
+qw[30:39]<-c(0.25,0.2,0.175,0.150,0.150,0.150,0.150,0.150,0.150,1)
+
+
+## ------------------------------------------------------------------------
+aqx.d<-c()
+aqx.d[30:39]<-qd[30:39]*(1-0.5*qw[30:39])
+aqx.w<-c()
+aqx.w[30:39]<-qw[30:39]*(1-0.5*qd[30:39])
+
+
+## ------------------------------------------------------------------------
+al.x<-c()
+ad.x.d<-c()
+ad.x.w<-c()
+al.x[30]<-100000
+for (j in 30:40) {
+  ad.x.d[j]<-al.x[j]*aqx.d[j]
+  ad.x.w[j]<-al.x[j]*aqx.w[j]
+  al.x[j+1]<-al.x[j]-ad.x.d[j]-ad.x.w[j]
+}
+
+
+
+## ------------------------------------------------------------------------
+prems<-c()
+prems[30:39]<-c(rep(5000,10))
+
+
+
+## ------------------------------------------------------------------------
+pbf<-c()
+pbf[30:39]<-c(prems[30]*0.45,prems[31:39]*0.01)
+pbf[30:39]
+
+
+## ------------------------------------------------------------------------
+bsm<-c()
+bsm[30:39]<-c(0.005*prems[30]*(1-0.45),0.005*prems[31:39]*(1-0.01))
+bsm[30:39]
+
+
+## ------------------------------------------------------------------------
+IP<-c()
+IP[30:39]<-prems[30:39]-pbf[30:39]-bsm[30:39]
+IP[30:39]
+
+
+## ------------------------------------------------------------------------
+i<-0.1;m<-0.003
+VU<-c()
+for (j in 30:39) {
+  VU[30]<-IP[30]*(1+i)*(1-m)
+  VU[j]<-(VU[j-1]+IP[j])*(1+i)*(1-m)
+}
+VU[38]<-s
+
+
+## ------------------------------------------------------------------------
+EIP.u<-c()
+EIP.u[30:39]<-IP[30:39]*al.x[30:39]/al.x[30]
+
+
+
+## ------------------------------------------------------------------------
+EVU.u<-c()
+EVU.u[30:39]<-VU[30:39]*al.x[31:40]/al.x[30]
+EVU.u[30:39]
+
+
+## ------------------------------------------------------------------------
+int.u<-c()
+int.u[30:39]<-c(i*EIP.u[30],i*(EVU.u[30:38]+EIP.u[31:39]))
+
+
+
+## ------------------------------------------------------------------------
+Tmsfr.u<-c()
+for (j in 30:39) {
+  Tmsfr.u[30]<-EIP.u[30]+int.u[30]-EVU.u[30]
+  Tmsfr.u[j]<-EVU.u[j-1]+EIP.u[j]+int.u[j]-EVU.u[j]
+}
+
+
+
+## ------------------------------------------------------------------------
+t<-c(1:10)
+
+
+## ------------------------------------------------------------------------
+exp<-c()
+exp[30:39]<-c(prems[30]*0.45+58,58*1.2^(t[2:10]-1))
+
+
+
+## ------------------------------------------------------------------------
+dsbft<-c()
+dsbft[30:39]<-VU[30:39]
+
+
+
+## ------------------------------------------------------------------------
+Epbf.nu<-c()
+Epbf.nu[30:39]<-pbf[30:39]*al.x[30:39]/al.x[30]
+
+
+
+## ------------------------------------------------------------------------
+Ebsm.nu<-c()
+Ebsm.nu[30:39]<-bsm[30:39]*al.x[30:39]/al.x[30]
+
+
+
+## ------------------------------------------------------------------------
+Eexp.nu<-c()
+Eexp.nu[30:39]<-exp[30:39]*al.x[30:39]/al.x[30]
+
+
+
+## ------------------------------------------------------------------------
+Edbft.nu<-c()
+Edbft.nu[30:39]<-dsbft[30:39]*ad.x.d[30:39]/al.x[30]
+
+
+
+## ------------------------------------------------------------------------
+Esbft.nu<-c()
+Esbft.nu[30:39]<-dsbft[30:39]*ad.x.w[30:39]/al.x[30]
+
+
+
+## ------------------------------------------------------------------------
+i.nu<-0.08
+int.nu<-c()
+int.nu[30:39]<-i.nu*(Epbf.nu[30:39]+Ebsm.nu[30:39]-Eexp.nu[30:39])
+
+
+## ------------------------------------------------------------------------
+Tmsfr.nu<-c()
+Tmsfr.nu[30:39]<-Epbf.nu[30:39]+Ebsm.nu[30:39]-Eexp.nu[30:39]+int.nu[30:39]+Tmsfr.u[30:39]-Edbft.nu[30:39]-Esbft.nu[30:39]
+
+
+
+
+
+## ------------------------------------------------------------------------
+EPV.Tmsfr.nu<-sum(1.125^(-t)*Tmsfr.nu[30:39])
+
+
+
+## ------------------------------------------------------------------------
+prob<-EPV.Tmsfr.nu/prems[30]
+
+Tmsfr.nu[39]
+}
+uniroot(func,c(60000,70000))
+```
+The new policy value in year 9 is 67319.02 and we can double check if the transfer at Year 10 is 0.
+```{r}
+func(67319.02)
+```
+We can see that the transfer in last year is almost zero. The difference might due to rounding error.
+
+###### Method 2
+The separate policy value is 
+```{r}
+policy_value<-c()
+policy_value[30:39]<-VU[30:39]
+policy_value[30:39]
+```
+We now try to find the changed policy value in year 9 to make the vaule of transfer in the final year is zero.
+```{r}
+f<-function(p)
+  (abs(Epbf.nu[39]+Ebsm.nu[39]-Eexp.nu[39]+int.nu[39]-Edbft.nu[39]-Esbft.nu[39]+(EIP.u[39]+(EIP.u[39]+p*al.x[39]/al.x[30])*i+p*al.x[39]/al.x[30])))
+nlm(f,VU[38])
+```
+#### (c)
+The  new policy value in year 9 should be changed to 67319.02.
+```{r}
+policy_value[38]<-67319.02
+policy_value[30:39]
+```
+New Expected policy value
+```{r}
+Epolicy_value<-c()
+Epolicy_value[30:39]<-policy_value[30:39]*al.x[31:40]/al.x[30]
+Epolicy_value[30:39]
+```
+Generate the new tranfer to non-unit fund vector 
+```{r}
+Tmsfr.nu.c<-c()
+for (j in 30:39) {
+  Tmsfr.nu.c[30]<-EIP.u[30]+int.u[30]-Epolicy_value[30]
+  Tmsfr.nu.c[j]<-Epolicy_value[j-1]+EIP.u[j]+int.u[j]-Epolicy_value[j]
+}
+Tmsfr.nu.c[30:39]
+```
+generate the new profit signature
+```{r}
+profit.sig<-c()
+profit.sig[30:39]<-Epbf.nu[30:39]+Ebsm.nu[30:39]-Eexp.nu[30:39]+int.nu[30:39]+Tmsfr.nu.c[30:39]-Edbft.nu[30:39]-Esbft.nu[30:39]
+profit.sig[30:39]
+```
+The last negative transfer is due to the approximation problem, which can be rounded to zero.
+The expected present value of the changed transfer at 12.5% is 
+```{r}
+EPV.Transfer.c<-c()
+EPV.Transfer.c<-sum(1.125^(-t)*profit.sig[30:39])
+EPV.Transfer.c
+```
+NPV decreased (before zeroise:34.67393 ;after zeroise: 34.64735). As the negative transfer occures in time 10, we have premmaturely release surplus in the earlier year. We adjust the cashflow at time 9 to make the transfer is 0 instead of negative. Money has been held back in the Unit Fund at time 9 (rather than being released to shareholders) to give a zero transfer at time 10. Since these additional funds earn only 10% p.a. interest in the Unit Fund, whereas the discount rate is 12.50%, overall the business is now (slightly) less profitable.
